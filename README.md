@@ -106,7 +106,7 @@ and select the script 'Changed policies' from the repository.
 <br>&emsp;- Under 'Advanced' set the 'Time out' to be 300.
 * Publish the changes.
 
-For more information about Smart Task go to [R80.40 Administration Guide](https://sc1.checkpoint.com/documents/R80.40/WebAdminGuides/EN/CP_R80.40_SecurityManagement_AdminGuide/Content/Topics-SECMG/SmartTasks.htm?Highlight=smarttask)... #TODO:  add link
+For more information about Smart Task go to [R80.40 Administration Guide](https://sc1.checkpoint.com/documents/R80.40/WebAdminGuides/EN/CP_R80.40_SecurityManagement_AdminGuide/Content/Topics-SECMG/SmartTasks.htm?Highlight=smarttask).
 
 ## limitations
 
