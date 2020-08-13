@@ -101,6 +101,7 @@ def get_all_packages(client, package_map):
 
     for package in show_packages_res.data:
         package_name = package.get('name')
+        add_layer_to_map("ALL", package_map, package_name)
 
         for access_layer in package.get('access-layers', []):
             add_layer_to_map(access_layer.get('uid'), package_map, package_name)
@@ -181,6 +182,12 @@ def calculate_changes(client, changes, packages_map, old_object):
         if 'threat' in changed_type or 'https' in changed_type:
             print_msg(changed_type + " changes are not supported.")
             continue
+
+        # check if global property - if yes return all packages and exit
+        if change.get('type') == 'ImpliedRule' or change.get('type') == 'CpmiFirewallProperties':
+            packages_map = get_all_packages(client, packages_map)
+            if packages_map.get("ALL") is not None:
+                return packages_map.get("ALL")
 
         # check if package
         if changed_type == 'package' or 'policy' in changed_type or 'policies' in changed_type:
@@ -276,13 +283,34 @@ def main():
         login(user_args, client)
         changed_policies_list = []
         diff = {}
+        package_map = {}
 
         print_msg("Collecting data from machine..")
         if user_args.changes is None:
             changes_res = client.api_call(command='show-changes', payload=show_changes_payload)
             if changes_res.success is False:
-                print_msg(" Error: \'show-changes\' command failed")
-                exit(1)
+                # in case that 'show-changes' command failed
+                # we will consider this session as all the packages were changed
+                print_msg("\'show-changes\' command failed. returning all packages.")
+
+                packages_map = get_all_packages(client, package_map)
+                if packages_map.get("ALL") is not None:
+                    # get session details
+                    last_published_session = client.api_call(command='show-sessions',
+                                                             payload={'view-published-sessions': 'true', 'limit': '1'})
+                    if last_published_session.success is False:
+                        print_msg("Error: \'show-sessions\' command failed")
+                        exit(1)
+                    session_id = last_published_session.data['objects'][0]['uid']
+                    changed_policies_list = list(set(packages_map.get("ALL")))
+                    output = print_output_to_file(changed_policies_list, session_id,
+                                                  user_args.domain,
+                                                  user_args.output_file)
+
+                    print_msg("Operation completed.")
+                    return output
+                else:
+                    exit(1)
 
             diffs = changes_res.data['tasks'][0]['task-details'][0]['changes']
             if len(diffs) == 0:
@@ -294,7 +322,6 @@ def main():
             decode = base64.b64decode(user_args.changes)
             diff = json.loads(decode)
             pass
-        package_map = {}
 
         changed_policies_list = changed_policies_list + calculate_changes(
             client, diff.get('operations').get('added-objects'), package_map, False)
